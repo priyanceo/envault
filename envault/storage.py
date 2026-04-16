@@ -72,3 +72,13 @@ def list_projects(password: str, vault_dir: Path = DEFAULT_VAULT_DIR) -> list[st
     """Return all project names stored in the vault."""
     data = load_vault(password, vault_dir)
     return list(data.keys())
+
+
+def list_secrets(project: str, password: str,
+                 vault_dir: Path = DEFAULT_VAULT_DIR) -> list[str]:
+    """Return all secret keys stored under a project.
+
+    Returns an empty list if the project does not exist.
+    """
+    data = load_vault(password, vault_dir)
+    return list(data.get(project, {}).keys())
