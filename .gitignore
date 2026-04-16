@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.swp
+*.egg
+htmlcov/
+Desktop.ini
+dist/
+.idea/
+.pytest_cache/
+.coverage
+.cache/
+.env
+*.log
