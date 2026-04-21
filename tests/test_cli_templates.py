@@ -22,6 +22,7 @@ def runner() -> CliRunner:
 
 
 def invoke(runner, vault_dir, args, input=None):
+    """Invoke a template_cmd subcommand with ENVAULT_VAULT_DIR set to vault_dir."""
     env = {"ENVAULT_VAULT_DIR": str(vault_dir)}
     return runner.invoke(template_cmd, args, input=input, env=env, catch_exceptions=False)
 
@@ -70,10 +71,23 @@ def test_delete_missing_template_exits_nonzero(runner, vault_dir):
     assert result.exit_code != 0
 
 
-def test_list_empty(runner, vault_dir):
+def test_list):
     result = invoke(runner, vault_dir, ["list"])
     assert result.exit_code == 0
     assert "No templates" in result.output
+
+
+def test_save_multiple_templates_all_appear_in_list(runner, vault_dir):
+    """Saving multiple templates should result in all names appearing in list output."""
+    invoke(runner, vault_dir, ["save", "alpha", "KEY_A"])
+    invoke(runner, vault_dir, ["save", "beta", "KEY_B"])
+    invoke(runner, vault_dir, ["save", "gamma", "KEY_C"])
+
+    result = invoke(runner, vault_dir, ["list"])
+    assert result.exit_code == 0
+    assert "alpha" in result.output
+    assert "beta" in result.output
+    assert "gamma" in result.output
 
 
 def test_check_all_match(runner, vault_dir):
