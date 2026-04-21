@@ -1,84 +1,95 @@
-"""Local encrypted storage for envault secrets."""
+"""Persistent encrypted vault storage for envault."""
+from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from envault.crypto import encrypt, decrypt
+from envault.crypto import decrypt, encrypt
 
-DEFAULT_VAULT_DIR = Path.home() / ".envault"
-VAULT_FILE = "vault.enc"
+_DEFAULT_PROFILE = "default"
 
 
-def get_vault_path(vault_dir: Path = DEFAULT_VAULT_DIR) -> Path:
-    """Return the path to the vault file."""
-    return vault_dir / VAULT_FILE
+def get_vault_path(vault_dir: Optional[str] = None) -> Path:
+    if vault_dir:
+        return Path(vault_dir)
+    return Path.home() / ".envault"
 
 
 def _ensure_vault_dir(vault_dir: Path) -> None:
     vault_dir.mkdir(parents=True, exist_ok=True)
 
 
-def load_vault(password: str, vault_dir: Path = DEFAULT_VAULT_DIR) -> dict:
-    """Load and decrypt the vault. Returns empty dict if vault doesn't exist."""
-    vault_path = get_vault_path(vault_dir)
-    if not vault_path.exists():
+def _vault_file(vault_dir: Path, profile: str) -> Path:
+    return vault_dir / f"{profile}.vault"
+
+
+def load_vault(vault_dir: Path, password: str, profile: str = _DEFAULT_PROFILE) -> Dict[str, Any]:
+    path = _vault_file(vault_dir, profile)
+    if not path.exists():
         return {}
-    ciphertext = vault_path.read_text(encoding="utf-8")
-    plaintext = decrypt(ciphertext, password)
+    ciphertext = path.read_text().strip()
+    plaintext = decrypt(ciphertext, password)  # raises on wrong password
     return json.loads(plaintext)
 
 
-def save_vault(data: dict, password: str, vault_dir: Path = DEFAULT_VAULT_DIR) -> None:
-    """Encrypt and persist the vault to disk."""
+def save_vault(vault_dir: Path, data: Dict[str, Any], password: str, profile: str = _DEFAULT_PROFILE) -> None:
     _ensure_vault_dir(vault_dir)
-    vault_path = get_vault_path(vault_dir)
     plaintext = json.dumps(data)
     ciphertext = encrypt(plaintext, password)
-    vault_path.write_text(ciphertext, encoding="utf-8")
+    _vault_file(vault_dir, profile).write_text(ciphertext)
 
 
-def set_secret(project: str, key: str, value: str, password: str,
-               vault_dir: Path = DEFAULT_VAULT_DIR) -> None:
-    """Store a key-value secret under a project namespace."""
-    data = load_vault(password, vault_dir)
-    data.setdefault(project, {})
-    data[project][key] = value
-    save_vault(data, password, vault_dir)
+def set_secret(
+    vault_dir: Path,
+    key: str,
+    value: str,
+    password: str,
+    profile: str = _DEFAULT_PROFILE,
+) -> None:
+    data = load_vault(vault_dir, password, profile)
+    data[key] = value
+    save_vault(vault_dir, data, password, profile)
 
 
-def get_secret(project: str, key: str, password: str,
-               vault_dir: Path = DEFAULT_VAULT_DIR) -> str | None:
-    """Retrieve a secret by project and key."""
-    data = load_vault(password, vault_dir)
-    return data.get(project, {}).get(key)
+def get_secret(
+    vault_dir: Path,
+    key: str,
+    password: str,
+    profile: str = _DEFAULT_PROFILE,
+) -> Optional[str]:
+    data = load_vault(vault_dir, password, profile)
+    return data.get(key)
 
 
-def delete_secret(project: str, key: str, password: str,
-                  vault_dir: Path = DEFAULT_VAULT_DIR) -> bool:
-    """Delete a secret. Returns True if it existed, False otherwise."""
-    data = load_vault(password, vault_dir)
-    project_data = data.get(project, {})
-    if key not in project_data:
+def delete_secret(
+    vault_dir: Path,
+    key: str,
+    password: str,
+    profile: str = _DEFAULT_PROFILE,
+) -> bool:
+    data = load_vault(vault_dir, password, profile)
+    if key not in data:
         return False
-    del project_data[key]
-    if not project_data:
-        data.pop(project, None)
-    save_vault(data, password, vault_dir)
+    del data[key]
+    save_vault(vault_dir, data, password, profile)
     return True
 
 
-def list_projects(password: str, vault_dir: Path = DEFAULT_VAULT_DIR) -> list[str]:
-    """Return all project names stored in the vault."""
-    data = load_vault(password, vault_dir)
-    return list(data.keys())
+def list_secrets(
+    vault_dir: Path,
+    password: str,
+    profile: str = _DEFAULT_PROFILE,
+) -> List[str]:
+    data = load_vault(vault_dir, password, profile)
+    return sorted(data.keys())
 
 
-def list_secrets(project: str, password: str,
-                 vault_dir: Path = DEFAULT_VAULT_DIR) -> list[str]:
-    """Return all secret keys stored under a project.
-
-    Returns an empty list if the project does not exist.
-    """
-    data = load_vault(password, vault_dir)
-    return list(data.get(project, {}).keys())
+def re_encrypt_vault(
+    vault_dir: Path,
+    old_password: str,
+    new_password: str,
+    profile: str = _DEFAULT_PROFILE,
+) -> None:
+    data = load_vault(vault_dir, old_password, profile)
+    save_vault(vault_dir, data, new_password, profile)
