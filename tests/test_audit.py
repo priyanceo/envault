@@ -37,6 +37,14 @@ def test_log_event_without_key(vault_dir):
     assert events[0]["action"] == "rotate"
 
 
+def test_log_event_timestamp_present(vault_dir):
+    """Each logged event should include a timestamp field."""
+    log_event("set", key="TS_KEY", vault_dir=vault_dir)
+    events = read_events(vault_dir=vault_dir)
+    assert len(events) == 1
+    assert "timestamp" in events[0], "Expected a 'timestamp' field in logged event"
+
+
 def test_clear_audit_log(vault_dir):
     log_event("set", key="X", vault_dir=vault_dir)
     clear_audit_log(vault_dir=vault_dir)
