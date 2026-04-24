@@ -38,6 +38,12 @@ envault pull --project myapp
 envault list
 ```
 
+**Delete a stored project:**
+
+```bash
+envault delete --project myapp
+```
+
 **Sync across machines using a passphrase:**
 
 ```bash
