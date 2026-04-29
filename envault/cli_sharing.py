@@ -29,11 +29,16 @@ def create_cmd(key, vault_dir, password, share_password):
 @click.argument("token")
 @click.option("--share-password", prompt=True, hide_input=True,
               help="Password used when creating the token.")
-def redeem_cmd(token, share_password):
+@click.option("--export", is_flag=True, default=False,
+              help="Print result as an export statement (e.g. export KEY=value).")
+def redeem_cmd(token, share_password, export):
     """Redeem a single-secret share TOKEN and print the key/value."""
     try:
         result = redeem_share_token(token, share_password)
-        click.echo(f"{result['key']}={result['value']}")
+        if export:
+            click.echo(f"export {result['key']}={result['value']}")
+        else:
+            click.echo(f"{result['key']}={result['value']}")
     except ValueError as e:
         click.echo(str(e), err=True)
         raise SystemExit(1)
@@ -57,12 +62,17 @@ def bundle_cmd(keys, vault_dir, password, share_password):
 @share_cmd.command("redeem-bundle")
 @click.argument("token")
 @click.option("--share-password", prompt=True, hide_input=True)
-def redeem_bundle_cmd(token, share_password):
+@click.option("--export", is_flag=True, default=False,
+              help="Print results as export statements (e.g. export KEY=value).")
+def redeem_bundle_cmd(token, share_password, export):
     """Redeem a bundle TOKEN and print all key=value pairs."""
     try:
         result = redeem_bundle(token, share_password)
         for k, v in result.items():
-            click.echo(f"{k}={v}")
+            if export:
+                click.echo(f"export {k}={v}")
+            else:
+                click.echo(f"{k}={v}")
     except ValueError as e:
         click.echo(str(e), err=True)
         raise SystemExit(1)
