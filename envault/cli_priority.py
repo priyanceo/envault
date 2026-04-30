@@ -63,8 +63,11 @@ def remove_cmd(key, vault_dir):
 @priority_cmd.command(name="list")
 @click.option("--filter", "priority_filter", type=click.Choice(["low", "medium", "high", "critical"]), default=None)
 @click.option("--vault-dir", envvar="ENVAULT_DIR", required=True)
-def list_cmd(priority_filter, vault_dir):
+@click.option("--sort", "sort_by_priority", is_flag=True, default=False, help="Sort output by priority level (critical first).")
+def list_cmd(priority_filter, vault_dir, sort_by_priority):
     """List keys and their priorities."""
+    _PRIORITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+
     if priority_filter:
         keys = list_by_priority(Path(vault_dir), priority_filter)
         if not keys:
@@ -77,5 +80,8 @@ def list_cmd(priority_filter, vault_dir):
         if not all_p:
             click.echo("No priorities set.")
         else:
-            for k, v in all_p.items():
+            items = all_p.items()
+            if sort_by_priority:
+                items = sorted(items, key=lambda kv: _PRIORITY_ORDER.get(kv[1], 99))
+            for k, v in items:
                 click.echo(f"{k}: {v}")
