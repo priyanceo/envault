@@ -17,7 +17,10 @@ def _load_ratings(vault_dir: Optional[Path] = None) -> Dict[str, int]:
     path = _get_ratings_path(vault_dir)
     if not path.exists():
         return {}
-    return json.loads(path.read_text())
+    try:
+        return json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Ratings file is corrupted: {exc}") from exc
 
 
 def _save_ratings(data: Dict[str, int], vault_dir: Optional[Path] = None) -> None:
